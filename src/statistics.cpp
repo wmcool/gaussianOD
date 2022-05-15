@@ -1,4 +1,4 @@
-#include "statistics.h"
+#include "../include/statistics.h"
 
 double mean(const std::vector<double> &data) {
   double psum = std::accumulate(data.begin(), data.end(), 0.0);

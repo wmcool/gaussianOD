@@ -1,12 +1,12 @@
-#include "detectanomalies.h"
-#include "io.h"
+#include "../include/detectanomalies.h"
+#include "../include/io.h"
 #include <iostream>
 #include <chrono>
-#include "mysocket.h"
+#include "../include/mysocket.h"
 #include <unistd.h>
 #include <ios>
 #include <vector>
-#include "json.hpp"
+#include "../include/json.hpp"
 
 using namespace std;
 

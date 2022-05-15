@@ -1,4 +1,4 @@
-#include "detectanomalies.h"
+#include "../include/detectanomalies.h"
 #include <iostream>
 
 Result detect_anomalies_global(const std::vector<double> &data) {

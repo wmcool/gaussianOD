@@ -1,4 +1,4 @@
-#include "io.h"
+#include "../include/io.h"
 
 std::vector<double> parseCsv(const std::string &filename) {
   std::vector<double> data;
