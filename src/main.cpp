@@ -60,6 +60,8 @@ int main(int argc, char *argv[]) {
     std::string method = argv[2];
     Result anomalies;
 //    int sock = init_socket();
+    duration<double, std::milli> all_time_cost;
+    double max_vm = .0;
     if (method == "tsg") {
       anomalies = detect_anomalies_global(data);
       std::cout << "Detected anomalies with global averages: " << std::endl;
@@ -87,11 +89,14 @@ int main(int argc, char *argv[]) {
           j["outlier"][ss.str()] = data[i];
           cout << j.dump() << endl;
           duration<double, std::milli> ms_double = t2 - t1;
-          std::cout << ms_double.count() << "ms cost\n";
+          all_time_cost += ms_double;
+//          std::cout << ms_double.count() << "ms cost\n";
           double vm, rss;
           process_mem_usage(vm, rss);
-          cout << "VM: " << vm << "KB" << endl;
+          if(vm > max_vm) max_vm = vm;
+//          cout << "VM: " << vm << "KB" << endl;
         }
+        all_time_cost += (t2 - t1);
       }
     } else if (method == "mad") {
       anomalies = detect_anomalies_mad(data);
@@ -104,6 +109,9 @@ int main(int argc, char *argv[]) {
       std::cerr << "Please type correct algorithm.";
       return 1;
     }
+    all_time_cost /= data.size();
+    cout << "average time cost per window: " << all_time_cost.count() << "ms" << endl;
+    cout << "max memory cost:" << max_vm << "KB" << endl;
   }
   return 0;
 }
