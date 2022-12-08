@@ -52,6 +52,7 @@ int main(int argc, char *argv[]) {
   using std::chrono::duration_cast;
   using std::chrono::duration;
   using std::chrono::milliseconds;
+  std::cout << "开始运行滑动窗口高斯离群点检测算法..." << std::endl;
   if (argc <= 2) {
     std::cerr << "For usage, please look README file.";
     return 1;
