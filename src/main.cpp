@@ -7,6 +7,8 @@
 #include <ios>
 #include <vector>
 #include "../include/json.hpp"
+#include <sys/fcntl.h>
+#include <sys/stat.h>
 
 using namespace std;
 
@@ -57,62 +59,64 @@ int main(int argc, char *argv[]) {
     std::cerr << "For usage, please look README file.";
     return 1;
   } else {
-    std::vector<double> data = parseCsv(argv[1]);
-    std::string method = argv[2];
+
+    // 初始化管道
+    if((mkfifo("/tmp/ndc",O_CREAT|O_EXCL)<0)&&(errno!=EEXIST))
+      printf("cannot create fifo\n");
+    if(errno==ENXIO){
+      printf("open error; no reading process\n");
+      return 0;
+    }
+    int fifo_fd = 0;
+    fifo_fd = open("/tmp/ndc",O_RDONLY, 0);
+    if(fifo_fd <= 0) {
+      printf("open fifo failed");
+      return 0;
+    }
+
+    vector<double> window;
+
+    std::string method = argv[1];
     Result anomalies;
 //    int sock = init_socket();
-    duration<double, std::milli> all_time_cost;
-    double max_vm = .0;
+    int k = 0;
+    int cur = 1;
     if (method == "tsg") {
-      anomalies = detect_anomalies_global(data);
-      std::cout << "Detected anomalies with global averages: " << std::endl;
-      for (decltype(anomalies.indexes.size()) i = 0;
-           i < anomalies.indexes.size(); i++) {
-      }
     } else if (method == "tsr") {
       if (argc <= 3) {
         std::cerr << "You must type window size.";
         return 1;
       }
-      int window_size = std::stoi(argv[3]);
-      for (decltype(data.size()) i = window_size - 1; i < data.size(); i++) {
-        auto t1 = high_resolution_clock::now();
-        std::vector<double> window = std::vector<double>(
-            data.begin() + i - window_size + 1, data.begin() + i + 1);
+      int window_size = std::stoi(argv[2]);
+      for(int i=0;i<window_size;i++) {
+        double data = get_incoming_data(fifo_fd, 1, ",");
+        window.push_back(data);
+      }
+      while(true) {
         double moving_mean = mean(window);
         double moving_stddev = stddev(window);
-        double score = data[i] - moving_mean;
-        auto t2 = high_resolution_clock::now();
-        if (std::abs(score) > 3 * moving_stddev) {
-          nlohmann::json j;
-          stringstream ss;
-          ss << i;
-          j["outlier"][ss.str()] = data[i];
+        double score = window[k] - moving_mean;
+        if(k < window_size - 1) k++;
+        nlohmann::json j;
+        stringstream ss;
+        ss << cur;
+        if (std::abs(score) > moving_stddev) {
+          j["outlier"][ss.str()] = window[k];
           cout << j.dump() << endl;
-          duration<double, std::milli> ms_double = t2 - t1;
-          all_time_cost += ms_double;
-//          std::cout << ms_double.count() << "ms cost\n";
-          double vm, rss;
-          process_mem_usage(vm, rss);
-          if(vm > max_vm) max_vm = vm;
-//          cout << "VM: " << vm << "KB" << endl;
+          string s = j.dump() + "\n";
+//          send(sock, s.c_str(), s.size(), 0);
+        } else {
+          j["inlier"][ss.str()] = window[k];
+          cout << j.dump() << endl;
+          string s = j.dump() + "\n";
+//          send(sock, s.c_str(), s.size(), 0);
         }
-        all_time_cost += (t2 - t1);
       }
     } else if (method == "mad") {
-      anomalies = detect_anomalies_mad(data);
-      std::cout << "Detected anomalies with median absolute deviation: "
-                << std::endl;
-      for (decltype(anomalies.indexes.size()) i = 0;
-           i < anomalies.indexes.size(); i++) {
-      }
     } else {
       std::cerr << "Please type correct algorithm.";
       return 1;
     }
-    all_time_cost /= data.size();
-    cout << "average time cost per window: " << all_time_cost.count() << "ms" << endl;
-    cout << "max memory cost:" << max_vm << "KB" << endl;
   }
   return 0;
 }
